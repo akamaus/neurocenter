@@ -9,6 +9,10 @@
  * Date: Sun, 31 Jul 2011 22:49:45 +0400
  */
 
+//(function ($) {
+
+$$ = jQuery;
+
 // Important constants
 neuron_radius = 20;
 
@@ -109,7 +113,7 @@ function Neuron(x, y) {
     this.soma.dblclick(function() { this.neuron.stimulate(); });
     this.soma.click(function() {this.neuron.select(); });
 
-    $(this.soma.node).bind("mousedown", Neuron.on_mouse_down);
+    $$(this.soma.node).bind("mousedown", Neuron.on_mouse_down);
 
     this.redraw();
 }
@@ -146,8 +150,8 @@ Neuron.on_drag_stop = function() {
 
 Neuron.on_drag_move = function(dx, dy) {
     this.setPos({x: this.opos.x + dx, y: this.opos.y + dy});
-    $(this.neuron.outgoing_links).each(function(k,v) {v.redraw(); });
-    $(this.neuron.incoming_links).each(function(k,v) {v.redraw(); });
+    $$(this.neuron.outgoing_links).each(function(k,v) {v.redraw(); });
+    $$(this.neuron.incoming_links).each(function(k,v) {v.redraw(); });
 };
 
 Neuron.on_mouse_down = function(e) {
@@ -194,8 +198,8 @@ Neuron.linked = function(n1,n2) {
 };
 
 Neuron.prototype.remove = function() {
-    $(this.incoming_links).each(function(k,l) { l.remove(); });
-    $(this.outgoing_links).each(function(k,l) { l.remove(); });
+    $$(this.incoming_links).each(function(k,l) { l.remove(); });
+    $$(this.outgoing_links).each(function(k,l) { l.remove(); });
     this.neurons.delete_first(this);
     this.soma.remove();
 };
@@ -242,8 +246,8 @@ function Link(n1, n2, w) {
     this.axon.attr({path: "M0 0"});
 
     this.axon.click(function() {this.link.select(); });
-    $(this.axon.node).bind("mousedown", Link.on_mouse_down);
-    $(this.axon.node).mousewheel(Link.on_wheel);
+    $$(this.axon.node).bind("mousedown", Link.on_mouse_down);
+    $$(this.axon.node).mousewheel(Link.on_wheel);
 
     this.redraw();
 }
@@ -319,10 +323,10 @@ function Chart(elem) {
 
     this.chart.addTimeSeries(this.chart_data,
         { strokeStyle:'rgb(0, 0, 255)', fillStyle:'rgba(0, 0, 255, 0.3)', lineWidth:3 });
-    this.chart.streamTo($(elem).get(0),300);
+    this.chart.streamTo($$(elem).get(0),300);
 
   } catch (err) {
-      $(elem).remove();
+      $$(elem).remove();
   }
 };
 
@@ -347,7 +351,7 @@ function Spike(id) {
     this.links = [];
     this.tick = 0;
 
-    this.paper = Raphael(id, $('#'+id).width(), $('#'+id).height());
+    this.paper = Raphael(id, $$('#'+id).width(), $$('#'+id).height());
 
     Neuron.prototype.paper = this.paper;
     Neuron.prototype.neurons = this.neurons;
@@ -357,14 +361,14 @@ function Spike(id) {
     Link.prototype.links = this.links;
 
     Spike.setup_canvas(this.paper);
-    Spike.chart = new Chart($('#exitation-chart'));
+    Spike.chart = new Chart($$('#exitation-chart'));
 
-    $(window).focus(Spike.start_timer);
-    $(window).blur(Spike.stop_timer);
+    $$(window).focus(Spike.start_timer);
+    $$(window).blur(Spike.stop_timer);
 
     // binding handlers
-    $('#'+id).click(Spike.on_canvas_click);
-    $(document).bind("contextmenu", function() {return false;});
+    $$('#'+id).click(Spike.on_canvas_click);
+    $$(document).bind("contextmenu", function() {return false;});
 
     Spike.start_timer();
 }
@@ -372,10 +376,10 @@ function Spike(id) {
 Spike.on_tick = function() {
     spike.tick++;
     for (var i=1;i<=2; i++) {
-        $(spike.neurons).each(function(k,n) {n.i_prev = n.i; n.i = 0; });
-        $(spike.neurons).each(function(k,n) {n.tick(); });
+        $$(spike.neurons).each(function(k,n) {n.i_prev = n.i; n.i = 0; });
+        $$(spike.neurons).each(function(k,n) {n.tick(); });
     }
-    $(spike.neurons).each(function(k,n) {n.redraw(); });
+    $$(spike.neurons).each(function(k,n) {n.redraw(); });
 
     Spike.update_stats();
 };
@@ -409,14 +413,14 @@ Spike.update_stats = function() {
         link_stats += 'Weight: ' + Link.selected.weight.valueOf().toFixed(2) + "<br/>";
     }
 
-    $('#neuron-stats').html(neuron_stats);
-    $('#link-stats').html(link_stats);
+    $$('#neuron-stats').html(neuron_stats);
+    $$('#link-stats').html(link_stats);
 };
 
 // handlers
 Spike.on_canvas_click = function(e) {
-    var x = e.pageX - $("svg").offset().left;
-    var y = e.pageY - $("svg").offset().top;
+    var x = e.pageX - $$("svg").offset().left;
+    var y = e.pageY - $$("svg").offset().top;
 
     var target = e.target || e.srcElement;
     if(target.tagName == "svg" || target.tagName == "td")
@@ -437,39 +441,44 @@ Spike.setup_canvas =function(paper) {
 Spike.store = function(s) {
     var state = {};
     state.neurons = [];
-    $(s.neurons).each(function(k,n) { state.neurons.push(Neuron.save(n)); });
+    $$(s.neurons).each(function(k,n) { state.neurons.push(Neuron.save(n)); });
 
     state.links = [];
-    $(s.links).each(function(k,l) { state.links.push(Link.save(l)); });
+    $$(s.links).each(function(k,l) { state.links.push(Link.save(l)); });
 
     state.new_num = Neuron.new_num;
     return state;
 };
 
 Spike.restore = function(spike, state) {
-    $(spike.neurons).each( function(k,n) { n.remove(); });
+    $$(spike.neurons).each( function(k,n) { n.remove(); });
 
     var neuro_map = {};
-    $(state.neurons).each( function(k,n) {
+    $$(state.neurons).each( function(k,n) {
         var neuro = Neuron.load(n);
         neuro_map[neuro.num] = neuro;
     });
-    $(state.links).each( function(k,l) {
+    $$(state.links).each( function(k,l) {
         Link.load(neuro_map, l);
     });
 
     Neuron.new_num = state.new_num;
 };
 
-$(document).ready(
+//function
+
+/*
+$$(document).ready(
     function() {
         window.spike = new Spike('main-bar');
         stack = [];
-        $('#help-toggle').click(function() { $('#help').toggle(); });
-        $('#save-button').click(function() {
+        $$('#help-toggle').click(function() { $$('#help').toggle(); });
+        $$('#save-button').click(function() {
           var st = Spike.store(window.spike);
           stack.push(st);
           alert('saved: ' + JSON.stringify(st));
         });
-        $('#load-button').click(function() { if (stack.length > 0) Spike.restore(window.spike, stack.pop()); });
+        $$('#load-button').click(function() { if (stack.length > 0) Spike.restore(window.spike, stack.pop()); });
     });
+*/
+//})(jQuery);
