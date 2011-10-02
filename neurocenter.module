@@ -1,0 +1,5 @@
+<?php
+
+function neurocenter_menu() {
+  return null;
+}

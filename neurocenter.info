@@ -1,0 +1,7 @@
+name = Neurocenter
+description = Integration with JS neural simulator
+core = 7.x
+
+files[] = neurocenter.module
+scripts[] = js/neurocenter.js
+stylesheets[all][] = css/neurocenter.css
