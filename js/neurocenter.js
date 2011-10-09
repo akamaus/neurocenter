@@ -16,8 +16,9 @@
 
          $(container).append('<div id="'+paper_id+'" class="neurocenter"></div>');
          var spike = window.spike = new Spike(paper_id);
-         
 
+         var cfg = JSON.parse(conf);
+         Spike.restore(spike, cfg);
      }
 
 })(jQuery);

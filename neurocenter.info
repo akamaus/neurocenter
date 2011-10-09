@@ -8,5 +8,6 @@ scripts[] = js/neurocenter.js
 scripts[] = js/spike.js
 scripts[] = js-libraries/raphael-min.js
 scripts[] = js-libraries/jquery.mousewheel.min.js
+scripts[] = js-libraries/json2-min.js
 
 stylesheets[all][] = css/neurocenter.css
