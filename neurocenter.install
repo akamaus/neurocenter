@@ -1,0 +1,16 @@
+<?php
+
+function neurocenter_field_schema($field) {
+  switch ($field['type']) {
+    case 'neurocenter':
+      $columns = array(
+        'serialized_network' => array(
+          'type' => 'varchar',
+          'length' => 1024,
+          'not null' => true));
+  };
+
+  return array(
+    'columns' => $columns);
+}
+

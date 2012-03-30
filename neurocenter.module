@@ -3,3 +3,110 @@
 function neurocenter_menu() {
   return null;
 }
+
+function neurocenter_field_info() {
+  return array(
+    'neurocenter' => array(
+      'label' => 'Neurocenter',
+      'description' => 'A model of neurocenter',
+      'default_widget' => 'neurocenter_editor',
+      'default_formatter' => 'neurocenter_player'
+    ));
+}
+
+function neurocenter_field_formatter_info() {
+  return array(
+    'neurocenter_player' => array(
+      'label' => t('Neurocenter JS player'),
+      'field types' => array('neurocenter'),
+      'settings' => array('width' => 320, 'height' => 240)
+    )
+  );
+}
+
+function neurocenter_field_widget_info() {
+  return array(
+    'neurocenter_editor' => array(
+      'label' => 'Neurocenter editor',
+      'field types' => array('neurocenter'),
+    )
+  );
+}
+
+// Implementation of hook_field_widget_form
+function neurocenter_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  drupal_set_message('items' . print_r($items,true));
+  drupal_set_message('field' . print_r($element,true));
+
+  $value = isset($items[$delta]['serialized_network']) ? $items[$delta]['serialized_network'] : 'xxx_default_value';
+  // Get the default address used to build the widget form elements, looking
+  // first in the form state, then in the stored value for the field, and then
+  // in the default values of the instance.
+  $default = array();
+  if (!empty($form_state['input'][$langcode][$delta])) {
+    // Use the value from the form_state if available.
+    $default = $form_state['input'][$langcode][$delta];
+  }
+  elseif (!empty($items[$delta])) {
+    // Else use the saved value for the field.
+    $default = $items[$delta];
+  }
+
+  $element['#prefix'] = '<div class="neurocenter-block">';
+  $element['#suffix'] = '</div>';
+
+  $element['serialized_network'] = array(
+    '#type' => 'textarea',
+    '#value' => $value,
+  );
+
+  return $element;
+}
+
+function neurocenter_field_is_empty($item, $field) {
+  drupal_set_message('fe item' . print_r($item,true));
+  drupal_set_message('fe field' . print_r($field,true));
+
+  return false;
+}
+
+function neurocenter_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+  drupal_set_message('formatter' . print_r($display,true));
+  drupal_set_message('items' . print_r($items,true));
+  switch ($display['type']) {
+  // Address formatted and straight up
+    case 'neurocenter_player':
+      foreach ($items as $delta => $item) {
+        $element[$delta] = array(
+          '#theme' => array('neurocenter_formatter_player'),
+          '#element' => $item,
+        );
+      }
+      break;
+  }
+  drupal_set_message('element' . print_r($element,true));
+  return $element;
+}
+
+/**
+* Implementation of hook_theme()
+*/
+function neurocenter_theme(){
+  return array(
+    'neurocenter_formatter_player' => array(
+      'variables' => array('element' => NULL,),
+    ),
+  );
+}
+
+function theme_neurocenter_formatter_player($variables) {
+  $element = $variables['element'];
+
+  $output  = '<div class="neurocenter-player">';
+  $output .= '<div class="serialized_network">' . $element['serialized_network'] . '</div>';
+
+  $output .= '</div>';
+
+  return $output;
+}
