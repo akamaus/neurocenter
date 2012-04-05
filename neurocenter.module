@@ -58,15 +58,15 @@ function neurocenter_field_widget_form(&$form, &$form_state, $field, $instance, 
   $element['serialized_network'] = array(
     '#type' => 'textarea',
     '#default_value' => $value,
+    '#attached' => array(
+      'js' => array(drupal_get_path('module', 'neurocenter') . '/js/neurocenter.js'),
+    ),
   );
 
   return $element;
 }
 
 function neurocenter_field_is_empty($item, $field) {
-  drupal_set_message('fe item' . print_r($item,true));
-  drupal_set_message('fe field' . print_r($field,true));
-
   return false;
 }
 
