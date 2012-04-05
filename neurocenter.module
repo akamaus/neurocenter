@@ -35,10 +35,10 @@ function neurocenter_field_widget_info() {
 
 // Implementation of hook_field_widget_form
 function neurocenter_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
-  drupal_set_message('items' . print_r($items,true));
-  drupal_set_message('field' . print_r($element,true));
+//  drupal_set_message('items' . print_r($items,true));
+//  drupal_set_message('field' . print_r($element,true));
 
-  $value = isset($items[$delta]['serialized_network']) ? $items[$delta]['serialized_network'] : 'xxx_default_value';
+  $value = isset($items[$delta]['serialized_network']) ? $items[$delta]['serialized_network'] : neurocenter_empty_network();
   // Get the default address used to build the widget form elements, looking
   // first in the form state, then in the stored value for the field, and then
   // in the default values of the instance.
@@ -59,7 +59,8 @@ function neurocenter_field_widget_form(&$form, &$form_state, $field, $instance, 
     '#type' => 'textarea',
     '#default_value' => $value,
     '#attached' => array(
-      'js' => array(drupal_get_path('module', 'neurocenter') . '/js/neurocenter.js'),
+      'js' => array(drupal_get_path('module', 'neurocenter') . '/js/neurocenter.js',
+                    drupal_get_path('module', 'neurocenter') . '/js/spike.js'),
     ),
   );
 
@@ -109,4 +110,8 @@ function theme_neurocenter_formatter_player($variables) {
   $output .= '</div>';
 
   return $output;
+}
+
+function neurocenter_empty_network() {
+  return '{"neurons":[],"links":[],"new_num":1}';
 }

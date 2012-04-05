@@ -3,10 +3,12 @@
      Drupal.behaviors.neurocenter_editor = {
          attach: function (context, settings) {
              $('div.neurocenter-block textarea',context).each(function(k,v) {
-                 var cfg_elem = $(v);
-                 conf = cfg_elem.val();
 
-                 cfg_elem.hide();
+                 var cfg_elem = $(v);
+                 var container = $(cfg_elem.parents('div.neurocenter-block'));
+                 conf = cfg_elem.val();
+                 container.children().hide();
+
                  var spike = implant_spike(cfg_elem.parents('div.neurocenter-block'),conf);
 
                  cfg_elem.parents('form').submit(function() {
