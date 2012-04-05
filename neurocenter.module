@@ -35,9 +35,6 @@ function neurocenter_field_widget_info() {
 
 // Implementation of hook_field_widget_form
 function neurocenter_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
-//  drupal_set_message('items' . print_r($items,true));
-//  drupal_set_message('field' . print_r($element,true));
-
   $value = isset($items[$delta]['serialized_network']) ? $items[$delta]['serialized_network'] : neurocenter_empty_network();
   // Get the default address used to build the widget form elements, looking
   // first in the form state, then in the stored value for the field, and then
@@ -52,16 +49,13 @@ function neurocenter_field_widget_form(&$form, &$form_state, $field, $instance, 
     $default = $items[$delta];
   }
 
-  $element['#prefix'] = '<div class="neurocenter-block">';
+  $element['#prefix'] = '<div class="neurocenter_editor">';
   $element['#suffix'] = '</div>';
 
   $element['serialized_network'] = array(
     '#type' => 'textarea',
     '#default_value' => $value,
-    '#attached' => array(
-      'js' => array(drupal_get_path('module', 'neurocenter') . '/js/neurocenter.js',
-                    drupal_get_path('module', 'neurocenter') . '/js/spike.js'),
-    ),
+    '#attached' => neurocenter_attachments(),
   );
 
   return $element;
@@ -71,47 +65,73 @@ function neurocenter_field_is_empty($item, $field) {
   return false;
 }
 
+function neurocenter_field_formatter_settings_summary($field, $instance, $view_mode) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+
+  $summary = '';
+
+  if ($display['type'] == 'neurocenter_player') {
+    $summary .= t('Width') . ': ' . $settings['width'] . '</br>';
+    $summary .= t('Height') . ': ' . $settings['height'];
+  }
+
+  return $summary;
+}
+
+function neurocenter_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+
+  if ($display['type'] == 'neurocenter_player') {
+    $element['width'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Width of the simulator block'),
+      '#size' => 5,
+      '#maxlength' => 5,
+      '#default_value' => $settings['width'],
+    );
+    $element['height'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Height of the simulator block'),
+      '#size' => 5,
+      '#maxlength' => 5,
+      '#default_value' => $settings['height'],
+    );
+  }
+
+  return $element;
+};
+
+
 function neurocenter_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $element = array();
-  drupal_set_message('formatter' . print_r($display,true));
-  drupal_set_message('items' . print_r($items,true));
+
   switch ($display['type']) {
   // Address formatted and straight up
     case 'neurocenter_player':
       foreach ($items as $delta => $item) {
         $element[$delta] = array(
-          '#theme' => array('neurocenter_formatter_player'),
-          '#element' => $item,
+          '#attached' => neurocenter_attachments(),
+          '#markup' => <<<EOS
+<div class='neurocenter_player' data-width={$display['settings']['width']} data-height={$display['settings']['height']}>
+  <div class="serialized_network">{$item['serialized_network']}</div>
+</div>
+EOS
         );
       }
       break;
   }
-  drupal_set_message('element' . print_r($element,true));
   return $element;
-}
-
-/**
-* Implementation of hook_theme()
-*/
-function neurocenter_theme(){
-  return array(
-    'neurocenter_formatter_player' => array(
-      'variables' => array('element' => NULL,),
-    ),
-  );
-}
-
-function theme_neurocenter_formatter_player($variables) {
-  $element = $variables['element'];
-
-  $output  = '<div class="neurocenter-player">';
-  $output .= '<div class="serialized_network">' . $element['serialized_network'] . '</div>';
-
-  $output .= '</div>';
-
-  return $output;
 }
 
 function neurocenter_empty_network() {
   return '{"neurons":[],"links":[],"new_num":1}';
+}
+
+function neurocenter_attachments() {
+  return array(
+    'js' => array(drupal_get_path('module', 'neurocenter') . '/js/neurocenter.js',
+                  drupal_get_path('module', 'neurocenter') . '/js/spike.js'),
+  );
 }
