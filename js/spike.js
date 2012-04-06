@@ -9,8 +9,6 @@
  * Date: Sun, 31 Jul 2011 22:49:45 +0400
  */
 
-//(function ($) {
-
 $$ = jQuery;
 
 // Important constants
@@ -34,10 +32,14 @@ tick_interval = 100;
 
 // Language augmentation
 Array.prototype.delete_first = function(obj) {
-    var i = this.indexOf(obj);
-    if (i >= 0)
-        this.splice(i,1);
-    return this;
+    if (this.indexOf) {
+        // for some mysterious reasons it gets called on Drupal ajax requests for window, not for arrays,
+        // so exclude that possibility
+        var i = this.indexOf(obj);
+        if (i >= 0)
+            this.splice(i,1);
+    }
+        return this;
 };
 
 // 2D point
@@ -89,6 +91,7 @@ function int_map(o1,o2,d1,d2, x) {
     else if (res > max) res = max;
     return Math.round(res);
 };
+
 
 // Neuron related
 
