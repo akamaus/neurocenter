@@ -92,10 +92,11 @@ function int_map(o1,o2,d1,d2, x) {
 
 // Neuron related
 
-function Neuron(x, y) {
-    this.num = Neuron.new_num++;
+function Neuron(spike, x, y) {
+    this.spike = spike; // access to rest neurons
+    this.num = spike.num_neurons++;
 
-    this.soma = this.paper.circle(x,y, neuron_radius);
+    this.soma = this.spike.paper.circle(x,y, neuron_radius);
     this.soma.neuron = this;
     this.soma.node.neuron = this;
     this.outgoing_links = [];
@@ -106,14 +107,15 @@ function Neuron(x, y) {
     this.i = 0; // summary external current
     this.i_prev = 0; // summary external current
 
-    this.neurons.push(this);
+    this.spike.neurons.push(this);
 
     this.soma.drag(Neuron.on_drag_move, Neuron.on_drag_start, Neuron.on_drag_stop);
 
     this.soma.dblclick(function() { this.neuron.stimulate(); });
     this.soma.click(function() {this.neuron.select(); });
 
-    $$(this.soma.node).bind("mousedown", Neuron.on_mouse_down);
+    var n = this;
+    $$(this.soma.node).bind("mousedown", function(e) { n.on_mouse_down(e); });
 
     this.redraw();
 }
@@ -154,18 +156,18 @@ Neuron.on_drag_move = function(dx, dy) {
     $$(this.neuron.incoming_links).each(function(k,v) {v.redraw(); });
 };
 
-Neuron.on_mouse_down = function(e) {
+Neuron.prototype.on_mouse_down = function(e) {
     switch(e.which) {
     case 2:
-        var n1 = Neuron.selected,
-        n2 = this.neuron;
+        var n1 = this.spike.selected_neuron,
+            n2 = this;
         if (n1 && n1 != n2 && !Neuron.linked(n1,n2)) {
-            new Link(n1,n2);
+            new Link(this.spike, n1,n2);
         }
         n2.select();
         break;
     case 3:
-        this.neuron.remove();
+        this.remove();
         break;
     }
 };
@@ -175,11 +177,11 @@ Neuron.prototype.stimulate = function() {
 };
 
 Neuron.prototype.select = function() {
-    if (Neuron.selected) {
-        Neuron.selected.soma.attr({"stroke-dasharray": ""});
+    if (this.spike.selected_neuron) {
+        this.spike.selected_neuron.soma.attr({"stroke-dasharray": ""});
     }
-    Neuron.selected = this;
-    Neuron.selected.soma.attr({"stroke-dasharray": "--"});
+    this.spike.selected_neuron = this;
+    this.spike.selected_neuron.soma.attr({"stroke-dasharray": "--"});
 
     Spike.update_stats();
 };
@@ -200,7 +202,7 @@ Neuron.linked = function(n1,n2) {
 Neuron.prototype.remove = function() {
     $$(this.incoming_links).each(function(k,l) { l.remove(); });
     $$(this.outgoing_links).each(function(k,l) { l.remove(); });
-    this.neurons.delete_first(this);
+    this.spike.neurons.delete_first(this);
     this.soma.remove();
 };
 
@@ -218,27 +220,29 @@ Neuron.save = function(n) {
     return s;
 };
 
-Neuron.load = function(s) {
-    var n = new Neuron(s.pos.x, s.pos.y);
-    n.num = s.num; // We want to clone original numbers so ignore internal Neuron counter
-    n.v = s.v;
-    n.w = s.w;
-    n.i = s.i;
+Neuron.load = function(spike, source) {
+    var n = new Neuron(spike, source.pos.x, source.pos.y);
+    n.num = source.num; // We want to clone original numbers so ignore internal Neuron counter
+    n.v = source.v;
+    n.w = source.w;
+    n.i = source.i;
 
     return n;
 };
 
 // Link related
-function Link(n1, n2, w) {
+function Link(spike, n1, n2, w) {
+    this.spike = spike; // access to rest links
+
     this.n1 = n1;
     this.n2 = n2;
     n1.outgoing_links.push(this);
     n2.incoming_links.push(this);
 
-    this.links.push(this);
+    this.spike.links.push(this);
 
     this.weight = new ValueRange(0, link_weight_max, w || link_weight);
-    this.axon = this.paper.path();
+    this.axon = this.spike.paper.path();
     this.axon.link = this;
     this.axon.node.link = this;
 
@@ -275,7 +279,7 @@ Link.prototype.select = function() {
 Link.prototype.remove = function() {
     this.n1.outgoing_links.delete_first(this);
     this.n2.incoming_links.delete_first(this);
-    this.links.delete_first(this);
+    this.spike.links.delete_first(this);
 
     this.axon.remove();
 };
@@ -300,8 +304,8 @@ Link.save = function(l) {
     return s;
 };
 
-Link.load = function(neuro_map, s) { // neuro_map is an assoacitive array from neuron indexes to neurons themselves
-    return new Link(neuro_map[s.n1_num], neuro_map[s.n2_num], s.weight);
+Link.load = function(spike, neuro_map, s) { // neuro_map is an assoacitive array from neuron indexes to neurons themselves
+    return new Link(spike, neuro_map[s.n1_num], neuro_map[s.n2_num], s.weight);
 };
 
 function Chart(elem) {
@@ -353,47 +357,47 @@ function Spike(id) {
 
     this.paper = Raphael(id, $$('#'+id).width(), $$('#'+id).height());
 
-    Neuron.prototype.paper = this.paper;
-    Neuron.prototype.neurons = this.neurons;
-    Neuron.new_num = 1;
-    Neuron.selected = undefined;
-    Link.prototype.paper = this.paper;
-    Link.prototype.links = this.links;
+    this.num_neurons = 0;
+    this.selected_neuron = undefined;
 
     Spike.setup_canvas(this.paper);
     Spike.chart = new Chart($$('#exitation-chart'));
 
-    $$(window).focus(Spike.start_timer);
-    $$(window).blur(Spike.stop_timer);
-
     // binding handlers
-    $$('#'+id).click(Spike.on_canvas_click);
-    $$(document).bind("contextmenu", function() {return false;});
+    var s = this;
 
-    Spike.start_timer();
-}
+    $$(window).focus(function() { s.start_timer(); } );
+    $$(window).blur(function() { s.stop_timer(); } );
 
-Spike.on_tick = function() {
-    spike.tick++;
+    $$('#'+id).click(function(e) { s.on_canvas_click(e); } );
+    $$('#'+id).bind("contextmenu", function() { return false; } );
+
+    this.start_timer();
+};
+
+Spike.prototype.on_tick = function() {
+    this.tick++;
     for (var i=1;i<=2; i++) {
-        $$(spike.neurons).each(function(k,n) {n.i_prev = n.i; n.i = 0; });
-        $$(spike.neurons).each(function(k,n) {n.tick(); });
+        $$(this.neurons).each(function(k,n) {n.i_prev = n.i; n.i = 0; });
+        $$(this.neurons).each(function(k,n) {n.tick(); });
     }
-    $$(spike.neurons).each(function(k,n) {n.redraw(); });
+    $$(this.neurons).each(function(k,n) {n.redraw(); });
 
     Spike.update_stats();
 };
 
-Spike.start_timer = function() {
-    if (!Spike.timer)
-        Spike.timer = setInterval(Spike.on_tick, tick_interval);
+Spike.prototype.start_timer = function() {
+    if (!this.timer) {
+        var s = this;
+        this.timer = setInterval(function() { s.on_tick(); }, tick_interval);
+    }
     Spike.chart.start();
 };
 
-Spike.stop_timer = function() {
-    if (Spike.timer) {
-        clearInterval(Spike.timer);
-        Spike.timer = undefined;
+Spike.prototype.stop_timer = function() {
+    if (this.timer) {
+        clearInterval(this.timer);
+        this.timer = undefined;
     }
     Spike.chart.stop();
 };
@@ -418,13 +422,13 @@ Spike.update_stats = function() {
 };
 
 // handlers
-Spike.on_canvas_click = function(e) {
+Spike.prototype.on_canvas_click = function(e) {
     var x = e.pageX - $$("svg").offset().left;
     var y = e.pageY - $$("svg").offset().top;
 
     var target = e.target || e.srcElement;
     if(target.tagName == "svg" || target.tagName == "td")
-        new Neuron(x, y);
+        new Neuron(this, x, y);
 };
 
 Spike.setup_canvas =function(paper) {
@@ -438,15 +442,15 @@ Spike.setup_canvas =function(paper) {
 };
 
 // Serializing and deserializing
-Spike.store = function(s) {
+Spike.store = function(spike) {
     var state = {};
     state.neurons = [];
-    $$(s.neurons).each(function(k,n) { state.neurons.push(Neuron.save(n)); });
+    $$(spike.neurons).each(function(k,n) { state.neurons.push(Neuron.save(n)); });
 
     state.links = [];
-    $$(s.links).each(function(k,l) { state.links.push(Link.save(l)); });
+    $$(spike.links).each(function(k,l) { state.links.push(Link.save(l)); });
 
-    state.new_num = Neuron.new_num;
+    state.num_neurons = this.num_neurons;
     return state;
 };
 
@@ -455,30 +459,12 @@ Spike.restore = function(spike, state) {
 
     var neuro_map = {};
     $$(state.neurons).each( function(k,n) {
-        var neuro = Neuron.load(n);
+        var neuro = Neuron.load(spike, n);
         neuro_map[neuro.num] = neuro;
     });
     $$(state.links).each( function(k,l) {
-        Link.load(neuro_map, l);
+        Link.load(spike, neuro_map, l);
     });
 
-    Neuron.new_num = state.new_num;
+    spike.num_neurons = state.num_neurons;
 };
-
-//function
-
-/*
-$$(document).ready(
-    function() {
-        window.spike = new Spike('main-bar');
-        stack = [];
-        $$('#help-toggle').click(function() { $$('#help').toggle(); });
-        $$('#save-button').click(function() {
-          var st = Spike.store(window.spike);
-          stack.push(st);
-          alert('saved: ' + JSON.stringify(st));
-        });
-        $$('#load-button').click(function() { if (stack.length > 0) Spike.restore(window.spike, stack.pop()); });
-    });
-*/
-//})(jQuery);

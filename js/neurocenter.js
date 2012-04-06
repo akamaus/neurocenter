@@ -1,5 +1,6 @@
 (function ($) {
      var seq = 1;
+     window.spike_array=[];
      Drupal.behaviors.neurocenter_editor = {
          attach: function (context, settings) {
              $('div.neurocenter_editor textarea',context).each(function(k,v) {
@@ -42,7 +43,8 @@
          if (w>0) $('#' +paper_id).width(w);
          if (h>0) $('#' +paper_id).height(h);
 
-         var spike = window.spike = new Spike(paper_id);
+         var spike = new Spike(paper_id);
+         window.spike = spike_array.push(spike);
          try {
              var cfg = JSON.parse(conf);
              Spike.restore(spike, cfg);
