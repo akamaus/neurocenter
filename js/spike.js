@@ -12,7 +12,7 @@
 $$ = jQuery;
 
 // Important constants
-neuron_radius = 20;
+neuron_radius = 1 / 20; // ratio to canvas size
 
 // Coefficients of FitzHugh-Nagumo model
 a = -0.7;
@@ -57,6 +57,10 @@ Pos.prototype.toString = function() {
     return this.x + " " + this.y;
 };
 
+Pos.prototype.scale = function(a,b) {
+    return new Pos(a * this.x, b * this.y);
+}
+
 // Value scroller
 function ValueRange(min, max, value) {
     this.min = min;
@@ -99,7 +103,7 @@ function Neuron(spike, x, y) {
     this.spike = spike; // access to rest neurons
     this.num = spike.num_neurons++;
 
-    this.soma = this.spike.paper.circle(x,y, neuron_radius);
+    this.soma = this.spike.paper.circle(x * this.spike.paper.width, y * this.spike.paper.height, this.getSize());
     this.soma.neuron = this;
     this.soma.node.neuron = this;
     this.outgoing_links = [];
@@ -120,11 +124,16 @@ function Neuron(spike, x, y) {
     var n = this;
     $$(this.soma.node).bind("mousedown", function(e) { n.on_mouse_down(e); });
 
+    this.setPos(new Pos(x,y));
     this.redraw();
 }
 
 Neuron.prototype.getPos = function() { return this.soma.getPos(); };
 Neuron.prototype.setPos = function(p) { this.soma.setPos(p); };
+
+Neuron.prototype.getSize = function() {
+    return Math.min(this.spike.paper.width,this.spike.paper.height) * neuron_radius;
+}
 
 Neuron.prototype.tick = function() {
     var v = this.v,
@@ -154,7 +163,8 @@ Neuron.on_drag_stop = function() {
 };
 
 Neuron.on_drag_move = function(dx, dy) {
-    this.setPos({x: this.opos.x + dx, y: this.opos.y + dy});
+    this.setPos({x: this.opos.x + dx / this.paper.width,
+                 y: this.opos.y + dy / this.paper.height});
     $$(this.neuron.outgoing_links).each(function(k,v) {v.redraw(); });
     $$(this.neuron.incoming_links).each(function(k,v) {v.redraw(); });
 };
@@ -289,12 +299,16 @@ Link.prototype.remove = function() {
 
 Link.prototype.toString = function() { return this.n1 + " -> " + this.n2; };
 Link.prototype.redraw = function() {
+    var w = this.axon.paper.width,
+        h = this.axon.paper.height;
     this.axon.scale(1.,1.);
-    this.axon.attr({path: "M" + this.n1.getPos() + "L" + this.n2.getPos()});
-    var dist = Pos.dist(this.n1.getPos(),this.n2.getPos()),
-        correction = (dist - 2 * neuron_radius) / dist;
-    if (correction > 0)
-        this.axon.scale(correction,correction);
+    this.axon.attr({path: "M" + this.n1.getPos().scale(w,h) + "L" + this.n2.getPos().scale(w,h)});
+    var dist = Pos.dist(this.n1.getPos().scale(w,h), this.n2.getPos().scale(w,h)),
+        correction = (dist - this.n1.getSize() - this.n2.getSize()) / dist;
+    console.log(correction);
+    if (correction < 0)
+        correction = 1e-9;
+    this.axon.scale(correction,correction);
 };
 
 // serializing and deserializing
@@ -431,16 +445,16 @@ Spike.prototype.on_canvas_click = function(e) {
 
     var target = e.target || e.srcElement;
     if(target.tagName == "svg" || target.tagName == "td")
-        new Neuron(this, x, y);
+        new Neuron(this, x / this.paper.width, y / this.paper.height);
 };
 
 Spike.setup_canvas =function(paper) {
     var c = paper.circle(0,0,1);
     c.__proto__.getPos = function() {
-        return new Pos(this.attr("cx"), this.attr("cy"));
+        return new Pos(this.attr("cx") / this.paper.width, this.attr("cy") / this.paper.height);
     };
     c.__proto__.setPos = function(pos) {
-        this.attr({cx: pos.x, cy: pos.y});
+        this.attr({cx: pos.x * this.paper.width, cy: pos.y * this.paper.height});
     };
 };
 
