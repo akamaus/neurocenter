@@ -101,7 +101,7 @@ function int_map(o1,o2,d1,d2, x) {
 
 function Neuron(spike, x, y) {
     this.spike = spike; // access to rest neurons
-    this.num = spike.num_neurons++;
+    this.num = spike.last_neuron++;
 
     this.soma = this.spike.paper.circle(x * this.spike.paper.width, y * this.spike.paper.height, this.getSize());
     this.soma.neuron = this;
@@ -235,7 +235,8 @@ Neuron.save = function(n) {
 
 Neuron.load = function(spike, source) {
     var n = new Neuron(spike, source.pos.x, source.pos.y);
-    n.num = source.num; // We want to clone original numbers so ignore internal Neuron counter
+    if (source.num)
+        n.num = source.num; // We want to clone original numbers so ignore internal Neuron counter if external index is supplied
     n.v = source.v;
     n.w = source.w;
     n.i = source.i;
@@ -374,7 +375,7 @@ function Spike(id) {
 
     this.paper = Raphael(id, $$('#'+id).width(), $$('#'+id).height());
 
-    this.num_neurons = 0;
+    this.last_neuron = 0;
     this.selected_neuron = undefined;
 
     Spike.setup_canvas(this.paper);
@@ -467,14 +468,15 @@ Spike.store = function(spike) {
     state.links = [];
     $$(spike.links).each(function(k,l) { state.links.push(Link.save(l)); });
 
-    state.num_neurons = this.num_neurons;
+    state.last_neuron = this.last_neuron;
     return state;
 };
 
 Spike.restore = function(spike, state) {
     $$(spike.neurons).each( function(k,n) { n.remove(); });
 
-    var neuro_map = {};
+    var neuro_map = {}; // assotiation between neuron numbers and objects
+    var max_n = 0; // last neuron index
     $$(state.neurons).each( function(k,n) {
         var neuro = Neuron.load(spike, n);
         neuro_map[neuro.num] = neuro;
@@ -483,5 +485,6 @@ Spike.restore = function(spike, state) {
         Link.load(spike, neuro_map, l);
     });
 
-    spike.num_neurons = state.num_neurons;
+    if (state.last_neuron) // strictly it's not a necessary parameter
+        spike.last_neuron = state.last_neuron;
 };
