@@ -5,12 +5,11 @@ function neurocenter_field_schema($field) {
     case 'neurocenter':
       $columns = array(
         'serialized_network' => array(
-          'type' => 'varchar',
-          'length' => 1024,
+          'type' => 'text',
+          'size' => 'medium',
           'not null' => true));
   };
 
   return array(
     'columns' => $columns);
 }
-
