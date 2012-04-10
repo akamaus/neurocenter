@@ -441,12 +441,14 @@ Spike.update_stats = function() {
 
 // handlers
 Spike.prototype.on_canvas_click = function(e) {
-    var x = e.pageX - $$("svg").offset().left;
-    var y = e.pageY - $$("svg").offset().top;
+    var target = e.target;
 
-    var target = e.target || e.srcElement;
-    if(target.tagName == "svg" || target.tagName == "td")
+    var x = e.pageX - $$(target).offset().left;
+    var y = e.pageY - $$(target).offset().top;
+
+    if(target.tagName == "svg") {
         new Neuron(this, x / this.paper.width, y / this.paper.height);
+    }
 };
 
 Spike.setup_canvas =function(paper) {
