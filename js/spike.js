@@ -196,7 +196,8 @@ Neuron.prototype.select = function() {
     this.spike.selected_neuron = this;
     this.spike.selected_neuron.soma.attr({"stroke-dasharray": "--"});
 
-    Spike.update_stats();
+    if (this.spike.chart)
+        this.spike.update_stats();
 };
 
 Neuron.prototype.toString = function() {return "N " + this.num; };
@@ -326,48 +327,6 @@ Link.load = function(spike, neuro_map, s) { // neuro_map is an assoacitive array
     return new Link(spike, neuro_map[s.n1_num], neuro_map[s.n2_num], s.weight);
 };
 
-function Chart(elem) {
-  try {
-    //  throw new Object();
-    this.chart = new SmoothieChart({
-        grid: { strokeStyle:'rgb(0, 125, 0)', fillStyle:'rgb(0, 0, 0)',
-                lineWidth: 1, millisPerLine: 2000, verticalSections: 4 },
-        labels: { fillStyle:'rgb(60, 0, 0)' },
-        fps:5,
-        millisPerPixel: 100,
-        minValue:-2,
-        maxValue:2,
-       interpolation: "line"
-   });
-
-    // Data
-    this.chart_data = new TimeSeries();
-
-    this.chart.addTimeSeries(this.chart_data,
-        { strokeStyle:'rgb(0, 0, 255)', fillStyle:'rgba(0, 0, 255, 0.3)', lineWidth:3 });
-    this.chart.streamTo($$(elem).get(0),300);
-
-  } catch (err) {
-      $$(elem).remove();
-  }
-};
-
-Chart.prototype.start = function() {
-    if (this.chart)
-        this.chart.start();
-};
-
-Chart.prototype.stop = function() {
-    if (this.chart)
-        this.chart.stop();
-};
-
-Chart.prototype.append_datum = function(v) {
-    if (this.chart_data) {
-        this.chart_data.append(new Date().getTime(), v);
-    }
-};
-
 function Spike(id) {
     this.neurons = [];
     this.links = [];
@@ -379,7 +338,7 @@ function Spike(id) {
     this.selected_neuron = undefined;
 
     Spike.setup_canvas(this.paper);
-    Spike.chart = new Chart($$('#exitation-chart'));
+    this.chart = undefined; // here later we can attach the chart
 
     // binding handlers
     var s = this;
@@ -401,7 +360,8 @@ Spike.prototype.on_tick = function() {
     }
     $$(this.neurons).each(function(k,n) {n.redraw(); });
 
-    Spike.update_stats();
+    if (this.chart)
+        this.chart.update_stats();
 };
 
 Spike.prototype.start_timer = function() {
@@ -409,7 +369,8 @@ Spike.prototype.start_timer = function() {
         var s = this;
         this.timer = setInterval(function() { s.on_tick(); }, tick_interval);
     }
-    Spike.chart.start();
+    if (this.chart)
+        this.chart.start();
 };
 
 Spike.prototype.stop_timer = function() {
@@ -417,26 +378,8 @@ Spike.prototype.stop_timer = function() {
         clearInterval(this.timer);
         this.timer = undefined;
     }
-    Spike.chart.stop();
-};
-
-Spike.update_stats = function() {
-    var neuron_stats = "";
-    var link_stats = "";
-
-    var neuron = Neuron.selected;
-    if (neuron) {
-        neuron_stats += 'Id: ' + neuron + "<br/>";
-        neuron_stats += 'V: ' + neuron.v.toFixed(2) + "<br/>";
-        Spike.chart.append_datum(neuron.v);
-    }
-    if(Link.selected) {
-        link_stats += 'Id: ' + Link.selected + "<br/>";
-        link_stats += 'Weight: ' + Link.selected.weight.valueOf().toFixed(2) + "<br/>";
-    }
-
-    $$('#neuron-stats').html(neuron_stats);
-    $$('#link-stats').html(link_stats);
+    if (this.chart)
+        this.chart.stop();
 };
 
 // handlers
