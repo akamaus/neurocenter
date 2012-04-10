@@ -53,9 +53,9 @@ function neurocenter_field_widget_form(&$form, &$form_state, $field, $instance, 
   $element['#suffix'] = '</div>';
 
   $element['serialized_network'] = array(
+    '#attached' => neurocenter_attachments(),
     '#type' => 'textarea',
     '#default_value' => $value,
-    '#attached' => neurocenter_attachments(),
   );
 
   return $element;
@@ -112,7 +112,7 @@ function neurocenter_field_formatter_view($entity_type, $entity, $field, $instan
     case 'neurocenter_player':
       foreach ($items as $delta => $item) {
         $element[$delta] = array(
-          '#attached' => neurocenter_attachments(),
+          '#attached' => neurocenter_attachments(true),
           '#markup' => <<<EOS
 <div class='neurocenter_player' data-width={$display['settings']['width']} data-height={$display['settings']['height']}>
   <div class="serialized_network">{$item['serialized_network']}</div>
@@ -129,9 +129,14 @@ function neurocenter_empty_network() {
   return '{"neurons":[],"links":[],"new_num":1}';
 }
 
-function neurocenter_attachments() {
+// parameter is needed to bypass strange D7 behavior, formatter and widget have arguments in opposite order
+function neurocenter_attachments($reverse = false) {
+  $js = array(drupal_get_path('module', 'neurocenter') . '/js/spike.js',
+              drupal_get_path('module', 'neurocenter') . '/js/neurocenter.js');
+  if ($reverse)
+    $js = array_reverse($js);
+
   return array(
-    'js' => array(drupal_get_path('module', 'neurocenter') . '/js/neurocenter.js',
-                  drupal_get_path('module', 'neurocenter') . '/js/spike.js'),
+    'js' => $js
   );
 }

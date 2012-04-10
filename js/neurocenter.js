@@ -1,6 +1,9 @@
 (function ($) {
-     var seq = 1;
+    var seq = 1;
+    var Spike = Neurocenter1();
+
      window.spike_array=[];
+
      Drupal.behaviors.neurocenter_editor = {
          attach: function (context, settings) {
              $('div.neurocenter_editor textarea',context).each(function(k,v) {

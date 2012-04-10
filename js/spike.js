@@ -9,26 +9,29 @@
  * Date: Sun, 31 Jul 2011 22:49:45 +0400
  */
 
-$$ = jQuery;
+function Neurocenter1() {
+    var $$ = jQuery;
 
-// Important constants
-neuron_radius = 1 / 20; // ratio to canvas size
+    // Important constants
+    var model_parameters = {
+        // Coefficients of FitzHugh-Nagumo model
+        a: -0.7,
+        b: 0.8,
+        tau: 1/0.08,
+        // initial conditions
+        v0: -0.9,
+        w0: 0.24,
+        dt: 0.2,
+        // misc
+        manual_stimilus: 1,
+        link_weight: 0.5,
+        link_weight_max: 5
+    };
 
-// Coefficients of FitzHugh-Nagumo model
-a = -0.7;
-b = 0.8;
-tau = 1/0.08;
-// initial conditions
-v0 = -0.9;
-w0 = 0.24;
-
-dt = 0.2;
-
-manual_stimilus = 1;
-link_weight = 0.5;
-link_weight_max = 5;
-
-tick_interval = 100;
+    var display_parameters = {
+        neuron_radius:  1 / 20, // ratio to canvas size
+        tick_interval:  100
+    };
 
 // Language augmentation
 Array.prototype.delete_first = function(obj) {
@@ -109,8 +112,8 @@ function Neuron(spike, x, y) {
     this.outgoing_links = [];
     this.incoming_links = [];
 
-    this.v = v0; // potential
-    this.w = w0; // stabilizer
+    this.v = model_parameters.v0; // potential
+    this.w = model_parameters.w0; // stabilizer
     this.i = 0; // summary external current
     this.i_prev = 0; // summary external current
 
@@ -132,7 +135,7 @@ Neuron.prototype.getPos = function() { return this.soma.getPos(); };
 Neuron.prototype.setPos = function(p) { this.soma.setPos(p); };
 
 Neuron.prototype.getSize = function() {
-    return Math.min(this.spike.paper.width,this.spike.paper.height) * neuron_radius;
+    return Math.min(this.spike.paper.width,this.spike.paper.height) * display_parameters.neuron_radius;
 }
 
 Neuron.prototype.tick = function() {
@@ -140,10 +143,10 @@ Neuron.prototype.tick = function() {
         w = this.w,
         i = this.i_prev; // incoming current from last tick
     var dv = v - v*v*v - w + i;
-    var dw = (v - a - b*w)/tau;
+    var dw = (v - model_parameters.a - model_parameters.b*w)/model_parameters.tau;
 
-    this.v += dv*dt;
-    this.w += dw*dt;
+    this.v += dv*model_parameters.dt;
+    this.w += dw*model_parameters.dt;
 
     if (this.v > 0) // transmitting impulse
         for (i=0; i< this.outgoing_links.length; i++) {
@@ -186,7 +189,7 @@ Neuron.prototype.on_mouse_down = function(e) {
 };
 
 Neuron.prototype.stimulate = function() {
-    this.v += manual_stimilus;
+    this.v += model_parameters.manual_stimilus;
 };
 
 Neuron.prototype.select = function() {
@@ -256,7 +259,7 @@ function Link(spike, n1, n2, w) {
 
     this.spike.links.push(this);
 
-    this.weight = new ValueRange(0, link_weight_max, w || link_weight);
+    this.weight = new ValueRange(0, model_parameters.link_weight_max, w || model_parameters.link_weight);
     this.axon = this.spike.paper.path();
     this.axon.link = this;
     this.axon.node.link = this;
@@ -367,7 +370,7 @@ Spike.prototype.on_tick = function() {
 Spike.prototype.start_timer = function() {
     if (!this.timer) {
         var s = this;
-        this.timer = setInterval(function() { s.on_tick(); }, tick_interval);
+        this.timer = setInterval(function() { s.on_tick(); }, display_parameters.tick_interval);
     }
     if (this.chart)
         this.chart.start();
@@ -432,4 +435,7 @@ Spike.restore = function(spike, state) {
     });
 
     spike.free_neuron_index = max_n+1;
+};
+
+    return Spike;
 };
