@@ -101,7 +101,7 @@ function int_map(o1,o2,d1,d2, x) {
 
 function Neuron(spike, x, y) {
     this.spike = spike; // access to rest neurons
-    this.num = spike.last_neuron++;
+    this.num = spike.free_neuron_index++;
 
     this.soma = this.spike.paper.circle(x * this.spike.paper.width, y * this.spike.paper.height, this.getSize());
     this.soma.neuron = this;
@@ -375,7 +375,7 @@ function Spike(id) {
 
     this.paper = Raphael(id, $$('#'+id).width(), $$('#'+id).height());
 
-    this.last_neuron = 0;
+    this.free_neuron_index = 0;
     this.selected_neuron = undefined;
 
     Spike.setup_canvas(this.paper);
@@ -470,7 +470,6 @@ Spike.store = function(spike) {
     state.links = [];
     $$(spike.links).each(function(k,l) { state.links.push(Link.save(l)); });
 
-    state.last_neuron = this.last_neuron;
     return state;
 };
 
@@ -482,11 +481,12 @@ Spike.restore = function(spike, state) {
     $$(state.neurons).each( function(k,n) {
         var neuro = Neuron.load(spike, n);
         neuro_map[neuro.num] = neuro;
+        if (max_n < neuro.num)
+            max_n = neuro.num;
     });
     $$(state.links).each( function(k,l) {
         Link.load(spike, neuro_map, l);
     });
 
-    if (state.last_neuron) // strictly it's not a necessary parameter
-        spike.last_neuron = state.last_neuron;
+    spike.free_neuron_index = max_n+1;
 };
