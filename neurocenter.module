@@ -4,6 +4,35 @@ function neurocenter_menu() {
   return null;
 }
 
+function neurocenter_simulator_versions($mask=array()) {
+  $versions = array();
+  $path = drupal_get_path('module', 'neurocenter') . '/js/simulators';
+  $dir = opendir($path);
+
+  // get each entry
+  while($file = readdir($dir)) {
+    $match = array();
+    if (preg_match("/^spike-(\d+)\.(\d+)\.js$/", $file, $match) == 0)
+      continue;
+    $ver = array('file' => $path . '/' . $match[0],
+                 'model_version_major' => $match[1],
+                 'model_version_minor' => $match[2],
+                 'model_version' => $match[1] . "." . $match[2],
+    );
+
+    $all_pass = true;
+    foreach ($mask as $me => $val)
+      if (isset($ver[$me]) && $ver[$me] != $val) {
+        $all_pass = false;
+        break;
+      }
+
+    if ($all_pass)
+      $versions[] = $ver;
+  }
+  return $versions;
+}
+
 function neurocenter_field_info() {
   return array(
     'neurocenter' => array(
@@ -35,27 +64,38 @@ function neurocenter_field_widget_info() {
 
 // Implementation of hook_field_widget_form
 function neurocenter_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
-  $value = isset($items[$delta]['serialized_network']) ? $items[$delta]['serialized_network'] : neurocenter_empty_network();
-  // Get the default address used to build the widget form elements, looking
-  // first in the form state, then in the stored value for the field, and then
-  // in the default values of the instance.
-  $default = array();
-  if (!empty($form_state['input'][$langcode][$delta])) {
-    // Use the value from the form_state if available.
-    $default = $form_state['input'][$langcode][$delta];
+  $serialized_network = isset($items[$delta]['serialized_network']) ? $items[$delta]['serialized_network'] : neurocenter_empty_network();
+
+  $versions = neurocenter_simulator_versions();
+  $version_str = array(); // all the versions as string array
+  $cur_version = null; // index of current version if any
+
+  foreach($versions as $k => $v) {
+    $version_str[$k] = $v['model_version'];
+    if (($v['model_version_major'] == $items[$delta]['model_version_major']) &&
+        (is_null($cur_version) || ($v['model_version_major'] == $items[$delta]['model_version_minor'])))
+      $cur_version = $k; // looking for major && minor or at least major
   }
-  elseif (!empty($items[$delta])) {
-    // Else use the saved value for the field.
-    $default = $items[$delta];
-  }
+
+  if (is_null($cur_version))
+    $cur_version = 0;
 
   $element['#prefix'] = '<div class="neurocenter_editor">';
   $element['#suffix'] = '</div>';
 
   $element['serialized_network'] = array(
-    '#attached' => neurocenter_attachments(),
+    '#attached' => neurocenter_attachments($versions[$cur_version]['file']),
     '#type' => 'textarea',
-    '#default_value' => $value,
+    '#attributes' => array('data-model-version' => $versions[$cur_version]['model_version']),
+    '#default_value' => $serialized_network,
+  );
+
+  $element['model_version'] = array(
+    '#type' => 'select',
+    '#title' => t('Version:'),
+    '#options' => $version_str,
+    '#default_value' => $cur_version,
+    '#element_validate' => array('neurocenter_model_version_validate'),
   );
 
   return $element;
@@ -63,6 +103,19 @@ function neurocenter_field_widget_form(&$form, &$form_state, $field, $instance, 
 
 function neurocenter_field_is_empty($item, $field) {
   return false;
+}
+
+function neurocenter_model_version_validate($element, &$form_state) {
+  $field_name = $element['#parents'][0];
+  $language = $element['#parents'][1];
+
+  $version_index = $form_state['values'][$field_name][$language][0]['model_version'];
+
+  $versions = neurocenter_simulator_versions();
+  $version = $versions[$version_index];
+
+  $form_state['values'][$field_name][$language][0]['model_version_major'] = $version['model_version_major'];
+  $form_state['values'][$field_name][$language][0]['model_version_minor'] = $version['model_version_minor'];
 }
 
 function neurocenter_field_formatter_settings_summary($field, $instance, $view_mode) {
@@ -103,7 +156,6 @@ function neurocenter_field_formatter_settings_form($field, $instance, $view_mode
   return $element;
 };
 
-
 function neurocenter_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $element = array();
 
@@ -111,11 +163,18 @@ function neurocenter_field_formatter_view($entity_type, $entity, $field, $instan
   // Address formatted and straight up
     case 'neurocenter_player':
       foreach ($items as $delta => $item) {
+        $version_mask = array_intersect_key($item, array_flip(array('model_version_major', 'model_version_minor')));
+        $scripts = neurocenter_simulator_versions($version_mask);
+        if (empty($scripts)) {
+          drupal_set_message(t("Can't find simulator") . ' ' . print_r($version_mask,true), 'error');
+          break;
+        }
+
         $element[$delta] = array(
-          '#attached' => neurocenter_attachments(true),
+          '#attached' => neurocenter_attachments($scripts[0]['file'], false),
           '#markup' => <<<EOS
-<div class='neurocenter_player' data-width={$display['settings']['width']} data-height={$display['settings']['height']}>
-  <div class="serialized_network">{$item['serialized_network']}</div>
+<div class='neurocenter_player'>
+  <div class='serialized_network' data-width='{$display['settings']['width']}' data-height='{$display['settings']['height']}' data-model-version='{$scripts[0]['model_version']}'>{$item['serialized_network']}</div>
 </div>
 EOS
         );
@@ -130,9 +189,8 @@ function neurocenter_empty_network() {
 }
 
 // parameter is needed to bypass strange D7 behavior, formatter and widget have arguments in opposite order
-function neurocenter_attachments($reverse = false) {
-  $js = array(drupal_get_path('module', 'neurocenter') . '/js/spike.js',
-              drupal_get_path('module', 'neurocenter') . '/js/neurocenter.js');
+function neurocenter_attachments($file, $reverse = false) {
+  $js = array($file, drupal_get_path('module', 'neurocenter') . '/js/neurocenter.js');
   if ($reverse)
     $js = array_reverse($js);
 

@@ -9,3 +9,5 @@ scripts[] = js-libraries/jquery.mousewheel.min.js
 scripts[] = js-libraries/json2-min.js
 
 stylesheets[all][] = css/neurocenter.css
+
+version = "7.x-0.5"

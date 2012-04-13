@@ -7,9 +7,51 @@ function neurocenter_field_schema($field) {
         'serialized_network' => array(
           'type' => 'text',
           'size' => 'medium',
-          'not null' => true));
+        ),
+        'model_parameters' => array(
+          'type' => 'text',
+          'size' => 'normal',
+        ),
+        'model_version_major' => array(
+          'type' => 'int',
+          'size' => 'small',
+          'not null' => true,
+        ),
+        'model_version_minor' => array(
+          'type' => 'int',
+          'size' => 'small',
+          'not null' => true,
+        )
+      );
   };
 
   return array(
     'columns' => $columns);
+}
+
+function neurocenter_update_7000(&$sandbox) {
+  $fields = array(
+    'model_parameters' => array(
+      'type' => 'text',
+      'size' => 'normal',
+      'initial' => '{}',
+    ),
+    'model_version_major' => array(
+      'type' => 'int',
+      'size' => 'small',
+      'not null' => true,
+      'initial' => 1,
+    ),
+    'model_version_minor' => array(
+      'type' => 'int',
+      'size' => 'small',
+      'not null' => true,
+      'initial' => 1,
+    )
+  );
+
+  foreach ($fields as $f => $spec) {
+    db_add_field('field_data_field_neurocenter', 'field_neurocenter_' . $f, $spec);
+    db_add_field('field_revision_field_neurocenter', 'field_neurocenter_' . $f, $spec);
+  }
 }

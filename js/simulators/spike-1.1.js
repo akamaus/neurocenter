@@ -9,7 +9,11 @@
  * Date: Sun, 31 Jul 2011 22:49:45 +0400
  */
 
-function Neurocenter1() {
+if (!window.SpikeCode)
+    window.SpikeCode = new Object();
+window.SpikeCode['1.1'] = Spike_1_1();
+
+function Spike_1_1() {
     var $$ = jQuery;
 
     // Important constants
@@ -408,7 +412,8 @@ function Neurocenter1() {
     };
 
     // Serializing and deserializing
-    Spike.store = function(spike) {
+    Spike.prototype.store = function() {
+        var spike = this;
         var state = {};
         state.neurons = [];
         $$(spike.neurons).each(function(k,n) { state.neurons.push(Neuron.save(n)); });
@@ -419,7 +424,8 @@ function Neurocenter1() {
         return state;
     };
 
-    Spike.restore = function(spike, state) {
+    Spike.prototype.restore = function(state) {
+        var spike = this;
         $$(spike.neurons).each( function(k,n) { n.remove(); });
 
         var neuro_map = {}; // assotiation between neuron numbers and objects
